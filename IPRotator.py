@@ -1,0 +1,311 @@
+from javax.swing import JPanel, JTextField, JButton, JLabel, BoxLayout, JPasswordField, JCheckBox, JRadioButton, ButtonGroup
+from burp import IBurpExtender, IExtensionStateListener, ITab, IHttpListener
+from java.awt import GridLayout
+import boto3
+import re
+
+EXT_NAME = 'IP Rotator'
+ENABLED = '<html><h2><font color="green">Enabled</font></h2></html>'
+DISABLED = '<html><h2><font color="red">Disabled</font></h2></html>'
+STAGE_NAME = 'burpendpoint'
+API_NAME = 'BurpAPI'
+AVAIL_REGIONS = [
+				"us-east-1","us-west-1","us-east-2",
+				"us-west-2","eu-central-1","eu-west-1",
+				"eu-west-2","eu-east-1", "eu-east-2",
+				"eu-north-1","sa-east-1"
+				]
+
+class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
+	def __init__(self):
+		self.allEndpoints = []
+		self.currentEndpoint = 0
+
+	def registerExtenderCallbacks(self, callbacks):
+		self.callbacks = callbacks
+		self.helpers = callbacks.helpers
+		self.isEnabled = False
+
+		callbacks.registerHttpListener(self)
+		callbacks.setExtensionName(EXT_NAME)
+		callbacks.addSuiteTab(self)
+
+
+	def getTargetProtocol(self):
+		if self.https_button.isSelected() == True:
+			return 'https'
+		else:
+			return 'http'
+
+	def getRegions(self):
+		self.enabled_regions = {}
+		for region in AVAIL_REGIONS:
+			cur_region = region.replace('-','_')
+			cur_region = cur_region+'_status'
+			region_status = getattr(self,cur_region)
+			if region_status.isSelected():
+				#dict to contain the running regions and API gateway IDs
+				self.enabled_regions.update({region:''})
+		return
+
+
+#AWS functions
+
+	#Uses boto3 to test the AWS keys and make sure they are valid
+	def testKeys(self):
+		return
+
+	#Uses boto3 to spin up an API Gateway
+	def startAPIGateway(self):
+		self.getRegions()
+		for region in self.enabled_regions.keys():
+			self.awsclient = boto3.client('apigateway',
+			    aws_access_key_id=self.access_key.text,
+			    aws_secret_access_key=self.secret_key.text,
+			    region_name=region
+			)
+
+			self.create_api_response = self.awsclient.create_rest_api(
+			    name=API_NAME,
+			    endpointConfiguration={
+			    'types': [
+			        'REGIONAL',
+			    ]
+			    }
+			)
+
+			get_resource_response = self.awsclient.get_resources(
+			    restApiId=self.create_api_response['id']
+			)
+			
+			self.restAPIId = self.create_api_response['id']
+			self.enabled_regions[region] = self.restAPIId
+
+			create_resource_response = self.awsclient.create_resource(
+			    restApiId=self.create_api_response['id'],
+			    parentId=get_resource_response['items'][0]['id'],
+			    pathPart='{proxy+}'
+			)
+
+			self.awsclient.put_method(
+			    restApiId=self.create_api_response['id'],
+			    resourceId=create_resource_response['id'],
+			    httpMethod='ANY',
+			    authorizationType='NONE',
+			    requestParameters={
+			    	'method.request.path.proxy':True
+			    }
+			)
+
+			self.awsclient.put_integration(
+			    restApiId=self.create_api_response['id'],
+			    resourceId=create_resource_response['id'],
+			    type= 'HTTP_PROXY', 
+			    httpMethod= 'ANY',
+			    integrationHttpMethod='ANY',
+			    uri= self.getTargetProtocol()+'://'+self.target_host.text+'/{proxy}',
+			    connectionType= 'INTERNET',
+			    requestParameters={
+			    	'integration.request.path.proxy':'method.request.path.proxy'
+	    		}
+			)
+
+			self.deploy_response = self.awsclient.create_deployment(
+			    restApiId=self.restAPIId,
+			    stageName=STAGE_NAME
+
+			)
+
+			self.allEndpoints.append(self.restAPIId+'.execute-api.'+region+'.amazonaws.com')
+		
+		#Print out some info to burp console
+		print 'Following regions and API IDs started:'
+		print self.enabled_regions
+		print 'List of endpoints being used:'
+		print self.allEndpoints
+		return
+
+	#Uses boto3 to delete the API Gateway
+	def deleteAPIGateway(self):
+		for region in self.enabled_regions.keys():
+			self.awsclient = boto3.client('apigateway',
+			    aws_access_key_id=self.access_key.text,
+			    aws_secret_access_key=self.secret_key.text,
+			    region_name=region
+			)
+
+			response = self.awsclient.delete_rest_api(
+			    restApiId=self.enabled_regions[region]
+			)
+		return
+
+	#Called on "save" button click to save the settings
+	def saveKeys(self, event):
+		return
+
+	#Called on "Enable" button click to spin up the API Gateway
+	def enableGateway(self, event):
+		self.startAPIGateway()
+		self.status_indicator.text = ENABLED
+		self.isEnabled = True
+		self.enable_button.setEnabled(False)
+		self.secret_key.setEnabled(False)
+		self.access_key.setEnabled(False)
+		self.target_host.setEnabled(False)
+		self.disable_button.setEnabled(True)
+		return
+
+	#Called on "Disable" button click to delete API Gateway
+	def disableGateway(self, event):
+		self.deleteAPIGateway()
+		self.status_indicator.text = DISABLED
+		self.isEnabled = False
+		self.enable_button.setEnabled(True)
+		self.secret_key.setEnabled(True)
+		self.access_key.setEnabled(True)
+		self.target_host.setEnabled(True)
+		self.disable_button.setEnabled(False)
+		return
+
+	def getCurrEndpoint():
+
+		return 
+
+	#Traffic redirecting
+	def processHttpMessage(self, toolFlag, messageIsRequest, messageInfo):
+		# only process requests
+		if not messageIsRequest or not self.isEnabled:
+			return
+
+		# get the HTTP service for the request
+		httpService = messageInfo.getHttpService()
+
+		#Cycle through all the endpoints each request until then end of the list is reached
+		if self.currentEndpoint < len(self.allEndpoints):
+			self.currentEndpoint += 1
+		#Reset to 0 when end it reached
+		else:
+			self.currentEndpoint = 0
+		#THIS NEEDS FIXING
+		requestInfo = self.helpers.analyzeRequest(messageInfo)
+		new_headers = requestInfo.headers
+
+		#Update the path to point to the API Gateway path
+		req_head = new_headers[0]
+		new_headers[0] = re.sub(' \/'," /"+STAGE_NAME+"/",req_head)
+
+		#Replace the Host header with the Gateway host
+		for header in new_headers:
+			if header.startswith('Host: '):
+				host_header_index = new_headers.index(header)
+				new_headers[host_header_index] = 'Host: '+self.allEndpoints[self.currentEndpoint]
+
+		#Update the headers insert the existing body
+		body = messageInfo.request[requestInfo.getBodyOffset():len(messageInfo.request)]
+		messageInfo.request = self.helpers.buildHttpMessage(
+		                    new_headers,
+		                    body
+		                )
+		#Modify the request host, host header, and path to point to the new API endpoint
+		#Should always use HTTPS because API Gateway only uses HTTPS
+		if (self.target_host.text == httpService.getHost()):
+			messageInfo.setHttpService(
+				self.helpers.buildHttpService(
+					self.allEndpoints[self.currentEndpoint],
+					443, True
+				)
+			)
+	#Tab name
+	def getTabCaption(self):
+	    return EXT_NAME
+
+	#Layout the UI
+	def getUiComponent(self):
+		self.panel = JPanel()
+
+		self.main = JPanel()
+		self.main.setLayout(BoxLayout(self.main, BoxLayout.Y_AXIS))
+
+		self.access_key_panel = JPanel()
+		self.main.add(self.access_key_panel)
+		self.access_key_panel.setLayout(BoxLayout(self.access_key_panel, BoxLayout.X_AXIS))
+		self.access_key_panel.add(JLabel('Access Key: '))
+		self.access_key = JTextField('', 25)
+		self.access_key_panel.add(self.access_key)
+
+		self.secret_key_panel = JPanel()
+		self.main.add(self.secret_key_panel)
+		self.secret_key_panel.setLayout(BoxLayout(self.secret_key_panel, BoxLayout.X_AXIS))
+		self.secret_key_panel.add(JLabel('Secret Key: '))
+		self.secret_key = JPasswordField('', 25)
+		self.secret_key_panel.add(self.secret_key)
+
+		self.target_host_panel = JPanel()
+		self.main.add(self.target_host_panel)
+		self.target_host_panel.setLayout(BoxLayout(self.target_host_panel, BoxLayout.X_AXIS))
+		self.target_host_panel.add(JLabel('Target host: '))
+		self.target_host = JTextField('example.com', 25)
+		self.target_host_panel.add(self.target_host)
+
+		self.buttons_panel = JPanel()
+		self.main.add(self.buttons_panel)
+		self.buttons_panel.setLayout(BoxLayout(self.buttons_panel, BoxLayout.X_AXIS))
+		self.save_button = JButton('Save', actionPerformed = self.saveKeys)
+		self.buttons_panel.add(self.save_button)
+		self.enable_button = JButton('Enable', actionPerformed = self.enableGateway)
+		self.buttons_panel.add(self.enable_button)
+		self.disable_button = JButton('Disable', actionPerformed = self.disableGateway)
+		self.buttons_panel.add(self.disable_button)
+		self.disable_button.setEnabled(False)
+
+		self.protocol_panel = JPanel()
+		self.main.add(self.protocol_panel)
+		self.protocol_panel.setLayout(BoxLayout(self.protocol_panel, BoxLayout.Y_AXIS))
+		self.protocol_panel.add(JLabel("Target Protocol:"))
+		self.https_button = JRadioButton("HTTPS",True)
+		self.http_button = JRadioButton("HTTP",False)
+		self.protocol_panel.add(self.http_button)
+		self.protocol_panel.add(self.https_button)
+		buttongroup = ButtonGroup()
+		buttongroup.add(self.https_button)
+		buttongroup.add(self.http_button)
+
+		self.regions_title = JPanel()
+		self.main.add(self.regions_title)
+		self.regions_title.add(JLabel("Regions to launch API Gateways in:"))
+
+		self.regions_panel = JPanel()
+		self.main.add(self.regions_panel)
+		glayout = GridLayout(4,3)
+		self.regions_panel.setLayout(glayout)
+		self.us_east_1_status = JCheckBox("us-east-1",True)
+		self.regions_panel.add(self.us_east_1_status)
+		self.us_west_1_status = JCheckBox("us-west-1",True)
+		self.regions_panel.add(self.us_west_1_status)
+		self.us_east_2_status = JCheckBox("us-east-2",True)
+		self.regions_panel.add(self.us_east_2_status)
+		self.us_west_2_status = JCheckBox("us-west-2",True)
+		self.regions_panel.add(self.us_west_2_status)
+		self.eu_central_1_status = JCheckBox("eu-central-1")
+		self.regions_panel.add(self.eu_central_1_status)
+		self.eu_west_1_status = JCheckBox("eu-west-1")
+		self.regions_panel.add(self.eu_west_1_status)
+		self.eu_west_2_status = JCheckBox("eu-west-2")
+		self.regions_panel.add(self.eu_west_2_status)
+		self.eu_east_1_status = JCheckBox("eu-east-1")
+		self.regions_panel.add(self.eu_east_1_status)
+		self.eu_east_2_status = JCheckBox("eu-east-2")
+		self.regions_panel.add(self.eu_east_2_status)
+		self.eu_north_1_status = JCheckBox("eu-north-1")
+		self.regions_panel.add(self.eu_north_1_status)
+		self.sa_east_1_status = JCheckBox("sa-east-1")
+		self.regions_panel.add(self.sa_east_1_status)
+
+		self.status = JPanel()
+		self.main.add(self.status)
+		self.status.setLayout(BoxLayout(self.status, BoxLayout.X_AXIS))
+		self.status_indicator = JLabel(DISABLED,JLabel.CENTER)
+		self.status.add(self.status_indicator)
+		
+		self.panel.add(self.main)
+		return self.panel
