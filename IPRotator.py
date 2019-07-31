@@ -181,12 +181,12 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 		httpService = messageInfo.getHttpService()
 
 		#Cycle through all the endpoints each request until then end of the list is reached
-		if self.currentEndpoint < len(self.allEndpoints):
+		if self.currentEndpoint < len(self.allEndpoints)-1:
 			self.currentEndpoint += 1
 		#Reset to 0 when end it reached
 		else:
 			self.currentEndpoint = 0
-		#THIS NEEDS FIXING
+
 		requestInfo = self.helpers.analyzeRequest(messageInfo)
 		new_headers = requestInfo.headers
 
