@@ -250,8 +250,8 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 		self.buttons_panel = JPanel()
 		self.main.add(self.buttons_panel)
 		self.buttons_panel.setLayout(BoxLayout(self.buttons_panel, BoxLayout.X_AXIS))
-		self.save_button = JButton('Save', actionPerformed = self.saveKeys)
-		self.buttons_panel.add(self.save_button)
+		#self.save_button = JButton('Save', actionPerformed = self.saveKeys) #not implemented yet
+		#self.buttons_panel.add(self.save_button)
 		self.enable_button = JButton('Enable', actionPerformed = self.enableGateway)
 		self.buttons_panel.add(self.enable_button)
 		self.disable_button = JButton('Disable', actionPerformed = self.disableGateway)
