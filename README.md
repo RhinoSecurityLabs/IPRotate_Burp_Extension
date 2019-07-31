@@ -17,3 +17,4 @@ This is useful to bypass IP blocking defense like bruteforce protection that blo
 
 If you want to check on the resources and enpoints that were started you can look at the output console in Burp.
 
+![](image.png)
