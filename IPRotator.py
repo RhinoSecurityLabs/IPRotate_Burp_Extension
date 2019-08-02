@@ -27,6 +27,7 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 		self.isEnabled = False
 
 		callbacks.registerHttpListener(self)
+		callbacks.registerExtensionStateListener(self)
 		callbacks.setExtensionName(EXT_NAME)
 		callbacks.addSuiteTab(self)
 
@@ -219,6 +220,11 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 	#Tab name
 	def getTabCaption(self):
 	    return EXT_NAME
+
+	#Handle extension unloading
+	def extensionUnloaded(self):
+		self.deleteAPIGateway()
+		return
 
 	#Layout the UI
 	def getUiComponent(self):
