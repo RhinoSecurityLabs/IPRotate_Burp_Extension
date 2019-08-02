@@ -12,14 +12,14 @@ API_NAME = 'BurpAPI'
 AVAIL_REGIONS = [
 				"us-east-1","us-west-1","us-east-2",
 				"us-west-2","eu-central-1","eu-west-1",
-				"eu-west-2","eu-east-1", "eu-east-2",
-				"eu-north-1","sa-east-1"
+				"eu-west-2","eu-west-3","sa-east-1","eu-north-1"
 				]
 
 class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 	def __init__(self):
 		self.allEndpoints = []
 		self.currentEndpoint = 0
+
 
 	def registerExtenderCallbacks(self, callbacks):
 		self.callbacks = callbacks
@@ -137,6 +137,7 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 			response = self.awsclient.delete_rest_api(
 			    restApiId=self.enabled_regions[region]
 			)
+			print response
 		return
 
 	#Called on "save" button click to save the settings
@@ -278,28 +279,12 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 		self.main.add(self.regions_panel)
 		glayout = GridLayout(4,3)
 		self.regions_panel.setLayout(glayout)
-		self.us_east_1_status = JCheckBox("us-east-1",True)
-		self.regions_panel.add(self.us_east_1_status)
-		self.us_west_1_status = JCheckBox("us-west-1",True)
-		self.regions_panel.add(self.us_west_1_status)
-		self.us_east_2_status = JCheckBox("us-east-2",True)
-		self.regions_panel.add(self.us_east_2_status)
-		self.us_west_2_status = JCheckBox("us-west-2",True)
-		self.regions_panel.add(self.us_west_2_status)
-		self.eu_central_1_status = JCheckBox("eu-central-1")
-		self.regions_panel.add(self.eu_central_1_status)
-		self.eu_west_1_status = JCheckBox("eu-west-1")
-		self.regions_panel.add(self.eu_west_1_status)
-		self.eu_west_2_status = JCheckBox("eu-west-2")
-		self.regions_panel.add(self.eu_west_2_status)
-		self.eu_east_1_status = JCheckBox("eu-east-1")
-		self.regions_panel.add(self.eu_east_1_status)
-		self.eu_east_2_status = JCheckBox("eu-east-2")
-		self.regions_panel.add(self.eu_east_2_status)
-		self.eu_north_1_status = JCheckBox("eu-north-1")
-		self.regions_panel.add(self.eu_north_1_status)
-		self.sa_east_1_status = JCheckBox("sa-east-1")
-		self.regions_panel.add(self.sa_east_1_status)
+		for region in AVAIL_REGIONS:
+			cur_region = region.replace('-','_')
+			cur_region = cur_region+'_status'
+			setattr(self,cur_region,JCheckBox(region,True))
+			attr = getattr(self,cur_region)
+			self.regions_panel.add(attr)
 
 		self.status = JPanel()
 		self.main.add(self.status)
