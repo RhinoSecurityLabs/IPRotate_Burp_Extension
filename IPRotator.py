@@ -117,7 +117,6 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 
 			)
 
-			#https://github.com/RhinoSecurityLabs/IPRotator_Burp_Extension/issues/3#issue-476293257
 			self.allEndpoints.append(self.restAPIId+'.execute-api.'+region+'.amazonaws.com')
 			
 			self.usage_response = self.awsclient.create_usage_plan(
@@ -152,6 +151,7 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 				)
 				print response
 		self.enabled_regions = {}
+		self.allEndpoints = []
 		return
 
 	#Called on "save" button click to save the settings
@@ -195,28 +195,28 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 		# get the HTTP service for the request
 		httpService = messageInfo.getHttpService()
 
-
 		#Modify the request host, host header, and path to point to the new API endpoint
 		#Should always use HTTPS because API Gateway only uses HTTPS
 		if (self.target_host.text == httpService.getHost()):
-			messageInfo.setHttpService(
-				self.helpers.buildHttpService(
-					self.allEndpoints[self.currentEndpoint],
-					443, True
-				)
-			)
 			#Cycle through all the endpoints each request until then end of the list is reached
 			if self.currentEndpoint < len(self.allEndpoints)-1:
 				self.currentEndpoint += 1
 			#Reset to 0 when end it reached
 			else:
 				self.currentEndpoint = 0
+			
+			messageInfo.setHttpService(
+				self.helpers.buildHttpService(
+					self.allEndpoints[self.currentEndpoint],
+					443, True
+				)
+			)
 
 			requestInfo = self.helpers.analyzeRequest(messageInfo)
 			new_headers = requestInfo.headers
 
 			#Update the path to point to the API Gateway path
-			req_head = new_headers[0]
+			req_head = new_headers[0]	
 			new_headers[0] = re.sub(' \/'," /"+STAGE_NAME+"/",req_head)
 
 			#Replace the Host header with the Gateway host
