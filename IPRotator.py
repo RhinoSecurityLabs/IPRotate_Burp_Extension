@@ -117,8 +117,19 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 
 			)
 
+			#https://github.com/RhinoSecurityLabs/IPRotator_Burp_Extension/issues/3#issue-476293257
 			self.allEndpoints.append(self.restAPIId+'.execute-api.'+region+'.amazonaws.com')
-		
+			
+			self.usage_response = self.awsclient.create_usage_plan(
+				name='burpusage',
+				description=self.restAPIId,
+				apiStages=[
+					{
+				 	'apiId': self.restAPIId,
+				 	'stage': STAGE_NAME
+					}
+				])
+
 		#Print out some info to burp console
 		print 'Following regions and API IDs started:'
 		print self.enabled_regions
@@ -128,17 +139,19 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 
 	#Uses boto3 to delete the API Gateway
 	def deleteAPIGateway(self):
-		for region in self.enabled_regions.keys():
-			self.awsclient = boto3.client('apigateway',
-			    aws_access_key_id=self.access_key.text,
-			    aws_secret_access_key=self.secret_key.text,
-			    region_name=region
-			)
+		if self.enabled_regions:
+			for region in self.enabled_regions.keys():
+				self.awsclient = boto3.client('apigateway',
+				    aws_access_key_id=self.access_key.text,
+				    aws_secret_access_key=self.secret_key.text,
+				    region_name=region
+				)
 
-			response = self.awsclient.delete_rest_api(
-			    restApiId=self.enabled_regions[region]
-			)
-			print response
+				response = self.awsclient.delete_rest_api(
+				    restApiId=self.enabled_regions[region]
+				)
+				print response
+		self.enabled_regions = {}
 		return
 
 	#Called on "save" button click to save the settings
@@ -182,32 +195,7 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 		# get the HTTP service for the request
 		httpService = messageInfo.getHttpService()
 
-		#Cycle through all the endpoints each request until then end of the list is reached
-		if self.currentEndpoint < len(self.allEndpoints)-1:
-			self.currentEndpoint += 1
-		#Reset to 0 when end it reached
-		else:
-			self.currentEndpoint = 0
 
-		requestInfo = self.helpers.analyzeRequest(messageInfo)
-		new_headers = requestInfo.headers
-
-		#Update the path to point to the API Gateway path
-		req_head = new_headers[0]
-		new_headers[0] = re.sub(' \/'," /"+STAGE_NAME+"/",req_head)
-
-		#Replace the Host header with the Gateway host
-		for header in new_headers:
-			if header.startswith('Host: '):
-				host_header_index = new_headers.index(header)
-				new_headers[host_header_index] = 'Host: '+self.allEndpoints[self.currentEndpoint]
-
-		#Update the headers insert the existing body
-		body = messageInfo.request[requestInfo.getBodyOffset():len(messageInfo.request)]
-		messageInfo.request = self.helpers.buildHttpMessage(
-		                    new_headers,
-		                    body
-		                )
 		#Modify the request host, host header, and path to point to the new API endpoint
 		#Should always use HTTPS because API Gateway only uses HTTPS
 		if (self.target_host.text == httpService.getHost()):
@@ -217,6 +205,33 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 					443, True
 				)
 			)
+			#Cycle through all the endpoints each request until then end of the list is reached
+			if self.currentEndpoint < len(self.allEndpoints)-1:
+				self.currentEndpoint += 1
+			#Reset to 0 when end it reached
+			else:
+				self.currentEndpoint = 0
+
+			requestInfo = self.helpers.analyzeRequest(messageInfo)
+			new_headers = requestInfo.headers
+
+			#Update the path to point to the API Gateway path
+			req_head = new_headers[0]
+			new_headers[0] = re.sub(' \/'," /"+STAGE_NAME+"/",req_head)
+
+			#Replace the Host header with the Gateway host
+			for header in new_headers:
+				if header.startswith('Host: '):
+					host_header_index = new_headers.index(header)
+					new_headers[host_header_index] = 'Host: '+self.allEndpoints[self.currentEndpoint]
+
+			#Update the headers insert the existing body
+			body = messageInfo.request[requestInfo.getBodyOffset():len(messageInfo.request)]
+			messageInfo.request = self.helpers.buildHttpMessage(
+			                    new_headers,
+			                    body
+			                )
+
 	#Tab name
 	def getTabCaption(self):
 	    return EXT_NAME
