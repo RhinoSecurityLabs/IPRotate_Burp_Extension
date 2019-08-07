@@ -4,7 +4,7 @@ from java.awt import GridLayout
 import boto3
 import re
 
-EXT_NAME = 'IP Rotator'
+EXT_NAME = 'IP Rotate'
 ENABLED = '<html><h2><font color="green">Enabled</font></h2></html>'
 DISABLED = '<html><h2><font color="red">Disabled</font></h2></html>'
 STAGE_NAME = 'burpendpoint'
