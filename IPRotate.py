@@ -10,10 +10,10 @@ DISABLED = '<html><h2><font color="red">Disabled</font></h2></html>'
 STAGE_NAME = 'burpendpoint'
 API_NAME = 'BurpAPI'
 AVAIL_REGIONS = [
-				"us-east-1","us-west-1","us-east-2",
-				"us-west-2","eu-central-1","eu-west-1",
-				"eu-west-2","eu-west-3","sa-east-1","eu-north-1"
-				]
+	"us-east-1","us-west-1","us-east-2",
+	"us-west-2","eu-central-1","eu-west-1",
+	"eu-west-2","eu-west-3","sa-east-1","eu-north-1"
+]
 
 class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 	def __init__(self):
