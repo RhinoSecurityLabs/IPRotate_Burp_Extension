@@ -1,3 +1,7 @@
+#AUTHOR: Dave Yesland @daveysec, Rhino Security Labs @rhinosecurity
+#Burp Suite extension which uses AWS API Gateway to change your IP on every request to bypass IP blocking.
+#More Info: https://rhinosecuritylabs.com/aws/bypassing-ip-based-blocking-aws/
+
 from javax.swing import JPanel, JTextField, JButton, JLabel, BoxLayout, JPasswordField, JCheckBox, JRadioButton, ButtonGroup
 from burp import IBurpExtender, IExtensionStateListener, ITab, IHttpListener
 from java.awt import GridLayout
