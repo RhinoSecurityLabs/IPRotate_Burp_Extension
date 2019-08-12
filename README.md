@@ -22,3 +22,9 @@ If you want to check on the resources and enpoints that were started or any pote
 
 #### Example of how the requests look
 ![](example.png)
+
+
+#### Setup
+Make sure you have Jython installed and add IPRotate.py through the Burp Extension options.
+
+![](setup.png)
