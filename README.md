@@ -17,4 +17,8 @@ This is useful to bypass different kinds of IP blocking like bruteforce protecti
 
 If you want to check on the resources and enpoints that were started or any potential errors you can look at the output console in Burp.
 
-![](ui.png)![](example.png)
+#### The Burp UI
+![](ui.png)
+
+#### Example of how the requests look
+![](example.png)
