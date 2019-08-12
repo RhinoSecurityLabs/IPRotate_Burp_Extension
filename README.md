@@ -7,7 +7,7 @@ This extension allows you to easily spin up API Gateways across multiple regions
 This is useful to bypass different kinds of IP blocking like bruteforce protection that blocks based on IP, API rate limiting based on IP or WAF blocking based on IP etc.
 
 ## Usage
-1) Ensure you have a set of AWS keys that have full access to the API Gateway service.  
+1) Ensure you have a set of AWS keys that have full access to the API Gateway service. This is available through the free tier of AWS.  
 2) Insert the credentials into the fields.  
 3) Insert the target domain you wish to target.  
 4) Select HTTPS if the domain is hosted over HTTPS.  
