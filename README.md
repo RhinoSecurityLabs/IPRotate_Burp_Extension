@@ -4,7 +4,7 @@ Extension for Burp Suite which uses AWS API Gateway to change your IP on every r
 ## Description
 This extension allows you to easily spin up API Gateways across multiple regions. All the Burp Suite traffic for the targeted host is then routed through the API Gateway endpoints which causes the IP to be different on each request. (There is a chance for recycling of IPs but this is pretty low and the more regions you use the less of a chance.)
 
-This is useful to bypass IP blocking defense like bruteforce protection that blocks based on IP, API rate limiting based on IP or WAF blocking based on IP etc.
+This is useful to bypass different kinds of IP blocking like bruteforce protection that blocks based on IP, API rate limiting based on IP or WAF blocking based on IP etc.
 
 ## Usage
 1) Ensure you have a set of AWS keys that have full access to the API Gateway service.  
@@ -15,6 +15,6 @@ This is useful to bypass IP blocking defense like bruteforce protection that blo
 6) Click "Enable".
 7) Once you are done ensure you click disable to delete all the resources which were started.
 
-If you want to check on the resources and enpoints that were started you can look at the output console in Burp.
+If you want to check on the resources and enpoints that were started or any potential errors you can look at the output console in Burp.
 
 ![](ui.png)![](example.png)
