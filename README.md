@@ -30,3 +30,10 @@ If you want to check on the resources and enpoints that were started or any pote
 Make sure you have Jython installed and add IPRotate.py through the Burp Extension options.
 
 ![](setup.png)
+
+### Previous Research
+After releasing this extension it was pointed out that there has been other research in this area using AWS API Gateway to hide an IP address. There is some awesome research and tools by [@ustayready](https://twitter.com/ustayready) [@ryHanson](https://twitter.com/ryHanson) and [@rmikehodges](https://twitter.com/rmikehodges) using this technique.
+
+Be sure to check them out too:  
+https://github.com/ustayready/fireprox  
+https://github.com/rmikehodges/hideNsneak  
