@@ -92,28 +92,46 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 			    pathPart='{proxy+}'
 			)
 
-			self.awsclient.put_method(
-			    restApiId=self.create_api_response['id'],
-			    resourceId=create_resource_response['id'],
-			    httpMethod='ANY',
-			    authorizationType='NONE',
-			    requestParameters={
-			    	'method.request.path.proxy':True
-			    }
-			)
+            self.awsclient.put_method(
+                restApiId=self.create_api_response['id'],
+                resourceId=get_resource_response['items'][0]['id'],
+                httpMethod='ANY',
+                authorizationType='NONE'
+            )
 
+            self.awsclient.put_method(
+                restApiId=self.create_api_response['id'],
+                resourceId=create_resource_response['id'],
+                httpMethod='ANY',
+                authorizationType='NONE',
+                requestParameters={
+                    'method.request.path.proxy': True
+                }
+            )
+			
 			self.awsclient.put_integration(
-			    restApiId=self.create_api_response['id'],
-			    resourceId=create_resource_response['id'],
-			    type= 'HTTP_PROXY', 
-			    httpMethod= 'ANY',
-			    integrationHttpMethod='ANY',
-			    uri= self.getTargetProtocol()+'://'+self.target_host.text+'/{proxy}',
-			    connectionType= 'INTERNET',
-			    requestParameters={
-			    	'integration.request.path.proxy':'method.request.path.proxy'
-	    		}
-			)
+                restApiId=self.create_api_response['id'],
+                resourceId=get_resource_response['items'][0]['id'],
+                type='HTTP_PROXY',
+                httpMethod='ANY',
+                integrationHttpMethod='ANY',
+                uri=self.getTargetProtocol()+'://'+self.target_host.text + '/',
+                connectionType='INTERNET'
+            )
+
+            self.awsclient.put_integration(
+                restApiId=self.create_api_response['id'],
+                resourceId=create_resource_response['id'],
+                type='HTTP_PROXY',
+                httpMethod='ANY',
+                integrationHttpMethod='ANY',
+                uri=self.getTargetProtocol()+'://'+self.target_host.text +
+                '/{proxy}',
+                connectionType='INTERNET',
+                requestParameters={
+                    'integration.request.path.proxy': 'method.request.path.proxy'
+                }
+            )
 
 			self.deploy_response = self.awsclient.create_deployment(
 			    restApiId=self.restAPIId,
