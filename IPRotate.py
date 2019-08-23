@@ -91,9 +91,26 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 			    parentId=get_resource_response['items'][0]['id'],
 			    pathPart='{proxy+}'
 			)
+			
+			self.awsclient.put_method(
+				restApiId=self.create_api_response['id'],
+				resourceId=get_resource_response['items'][0]['id'],
+				httpMethod='ANY',
+				authorizationType='NONE'
+            )
+
+			self.awsclient.put_integration(
+                restApiId=self.create_api_response['id'],
+                resourceId=get_resource_response['items'][0]['id'],
+                type='HTTP_PROXY',
+                httpMethod='ANY',
+                integrationHttpMethod='ANY',
+                uri=self.getTargetProtocol()+'://'+self.target_host.text + '/',
+                connectionType='INTERNET'
+            )
 
 			self.awsclient.put_method(
-			    restApiId=self.create_api_response['id'],
+				restApiId=self.create_api_response['id'],
 			    resourceId=create_resource_response['id'],
 			    httpMethod='ANY',
 			    authorizationType='NONE',
