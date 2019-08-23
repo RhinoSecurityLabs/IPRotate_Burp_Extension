@@ -56,7 +56,7 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 
 #AWS functions
 
-	#Uses boto3 to test the AWS keys and make sure they are valid
+	#Uses boto3 to test the AWS keys and make sure they are valid NOT IMPLEMENTED
 	def testKeys(self):
 		return
 
@@ -65,31 +65,31 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 		self.getRegions()
 		for region in self.enabled_regions.keys():
 			self.awsclient = boto3.client('apigateway',
-			    aws_access_key_id=self.access_key.text,
-			    aws_secret_access_key=self.secret_key.text,
-			    region_name=region
+				aws_access_key_id=self.access_key.text,
+				aws_secret_access_key=self.secret_key.text,
+				region_name=region
 			)
 
 			self.create_api_response = self.awsclient.create_rest_api(
-			    name=API_NAME,
-			    endpointConfiguration={
-			    'types': [
-			        'REGIONAL',
-			    ]
-			    }
+				name=API_NAME,
+				endpointConfiguration={
+					'types': [
+						'REGIONAL',
+					]
+				}
 			)
 
 			get_resource_response = self.awsclient.get_resources(
-			    restApiId=self.create_api_response['id']
+				restApiId=self.create_api_response['id']
 			)
 			
 			self.restAPIId = self.create_api_response['id']
 			self.enabled_regions[region] = self.restAPIId
 
 			create_resource_response = self.awsclient.create_resource(
-			    restApiId=self.create_api_response['id'],
-			    parentId=get_resource_response['items'][0]['id'],
-			    pathPart='{proxy+}'
+				restApiId=self.create_api_response['id'],
+				parentId=get_resource_response['items'][0]['id'],
+				pathPart='{proxy+}'
 			)
 			
 			self.awsclient.put_method(
@@ -97,44 +97,44 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 				resourceId=get_resource_response['items'][0]['id'],
 				httpMethod='ANY',
 				authorizationType='NONE'
-            )
+			)
 
 			self.awsclient.put_integration(
-                restApiId=self.create_api_response['id'],
-                resourceId=get_resource_response['items'][0]['id'],
-                type='HTTP_PROXY',
-                httpMethod='ANY',
-                integrationHttpMethod='ANY',
-                uri=self.getTargetProtocol()+'://'+self.target_host.text + '/',
-                connectionType='INTERNET'
-            )
+				restApiId=self.create_api_response['id'],
+				resourceId=get_resource_response['items'][0]['id'],
+				type='HTTP_PROXY',
+				httpMethod='ANY',
+				integrationHttpMethod='ANY',
+				uri=self.getTargetProtocol()+'://'+self.target_host.text + '/',
+				connectionType='INTERNET'
+			)
 
 			self.awsclient.put_method(
 				restApiId=self.create_api_response['id'],
-			    resourceId=create_resource_response['id'],
-			    httpMethod='ANY',
-			    authorizationType='NONE',
-			    requestParameters={
-			    	'method.request.path.proxy':True
-			    }
+				resourceId=create_resource_response['id'],
+				httpMethod='ANY',
+				authorizationType='NONE',
+				requestParameters={
+					'method.request.path.proxy':True
+				}
 			)
 
 			self.awsclient.put_integration(
-			    restApiId=self.create_api_response['id'],
-			    resourceId=create_resource_response['id'],
-			    type= 'HTTP_PROXY', 
-			    httpMethod= 'ANY',
-			    integrationHttpMethod='ANY',
-			    uri= self.getTargetProtocol()+'://'+self.target_host.text+'/{proxy}',
-			    connectionType= 'INTERNET',
-			    requestParameters={
-			    	'integration.request.path.proxy':'method.request.path.proxy'
-	    		}
+				restApiId=self.create_api_response['id'],
+				resourceId=create_resource_response['id'],
+				type= 'HTTP_PROXY', 
+				httpMethod= 'ANY',
+				integrationHttpMethod='ANY',
+				uri= self.getTargetProtocol()+'://'+self.target_host.text+'/{proxy}',
+				connectionType= 'INTERNET',
+				requestParameters={
+					'integration.request.path.proxy':'method.request.path.proxy'
+				}
 			)
 
 			self.deploy_response = self.awsclient.create_deployment(
-			    restApiId=self.restAPIId,
-			    stageName=STAGE_NAME
+				restApiId=self.restAPIId,
+				stageName=STAGE_NAME
 
 			)
 
@@ -145,10 +145,11 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 				description=self.restAPIId,
 				apiStages=[
 					{
-				 	'apiId': self.restAPIId,
-				 	'stage': STAGE_NAME
+					'apiId': self.restAPIId,
+					'stage': STAGE_NAME
 					}
-				])
+				]
+			)
 
 		#Print out some info to burp console
 		print 'Following regions and API IDs started:'
@@ -162,13 +163,13 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 		if self.enabled_regions:
 			for region in self.enabled_regions.keys():
 				self.awsclient = boto3.client('apigateway',
-				    aws_access_key_id=self.access_key.text,
-				    aws_secret_access_key=self.secret_key.text,
-				    region_name=region
+					aws_access_key_id=self.access_key.text,
+					aws_secret_access_key=self.secret_key.text,
+					region_name=region
 				)
 
 				response = self.awsclient.delete_rest_api(
-				    restApiId=self.enabled_regions[region]
+					restApiId=self.enabled_regions[region]
 				)
 				print response
 		self.enabled_regions = {}
@@ -249,13 +250,13 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 			#Update the headers insert the existing body
 			body = messageInfo.request[requestInfo.getBodyOffset():len(messageInfo.request)]
 			messageInfo.request = self.helpers.buildHttpMessage(
-			                    new_headers,
-			                    body
-			                )
+								new_headers,
+								body
+							)
 
 	#Tab name
 	def getTabCaption(self):
-	    return EXT_NAME
+		return EXT_NAME
 
 	#Handle extension unloading
 	def extensionUnloaded(self):
