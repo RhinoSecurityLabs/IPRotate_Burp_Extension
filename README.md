@@ -6,20 +6,20 @@ More info: [Bypassing IP Based Blocking Using AWS - Rhino Security Labs](https:/
 
 ## Description
 
-This extension allows you to easily spin up API Gateways across multiple regions. All the Burp Suite traffic for the targeted host is then routed through the API Gateway endpoints which causes the IP to be different on each request. (There is a chance for recycling of IPs but this is pretty low and the more regions you use the less of a chance.)
+This extension allows you to easily spin up API Gateways across multiple regions. All the Burp Suite traffic for the targeted host is then routed through the API Gateway endpoints which causes the IP to be different on each request. (There is a chance for recycling of IPs but this is pretty low and the more regions you use the less of a chance).
 
 This is useful to bypass different kinds of IP blocking like bruteforce protection that blocks based on IP, API rate limiting based on IP or WAF blocking based on IP etc.
 
 ## Usage
 
-1. Setup Jython in Burp Suite
-2. Install the boto3 module for Python 2  
-`pip install boto3`
-3. Ensure you have a set of AWS keys that have full access to the API Gateway service. This is available through the free tier of AWS.  
-4. Insert the credentials into the fields.  
-5. Insert the target domain you wish to target.  
-6. Select HTTPS if the domain is hosted over HTTPS.  
-7. Select all the regions you want to use.(The more you use the larger the IP pool will be)  
+1. Setup [Jython](https://www.jython.org/download.html) in Burp Suite.
+2. Install the [boto3](https://github.com/boto/boto3) module for Python 2.
+   1. Make sure that you setup your [python environment in burp](https://portswigger.net/burp/documentation/desktop/tools/extender#python-environment) to load the [boto3](https://github.com/boto/boto3) module properly or it won't find it.
+3. Ensure you have a set of AWS keys that have full access to the API Gateway service. This is available through the free tier of AWS.
+4. Insert the credentials into the fields.
+5. Insert the target domain you wish to target.
+6. Select HTTPS if the domain is hosted over HTTPS.
+7. Select all the regions you want to use.(The more you use the larger the IP pool will be)
 8. Click "Enable".
 9. Once you are done ensure you click disable to delete all the resources which were started.
 
