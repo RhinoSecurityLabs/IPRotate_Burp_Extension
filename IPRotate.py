@@ -219,7 +219,13 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 
 		#Modify the request host, host header, and path to point to the new API endpoint
 		#Should always use HTTPS because API Gateway only uses HTTPS
-		if (self.target_host.text == httpService.getHost()):
+		if ':' in self.target_host.text: #hacky fix for https://github.com/RhinoSecurityLabs/IPRotate_Burp_Extension/issues/14
+			host_no_port = self.target_host.text.split(':')[0]
+			
+		else:
+			host_no_port = self.target_host.text
+
+		if (host_no_port == httpService.getHost()):
 			#Cycle through all the endpoints each request until then end of the list is reached
 			if self.currentEndpoint < len(self.allEndpoints)-1:
 				self.currentEndpoint += 1
@@ -238,8 +244,14 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 			new_headers = requestInfo.headers
 
 			#Update the path to point to the API Gateway path
-			req_head = new_headers[0]	
-			new_headers[0] = re.sub(' \/'," /"+STAGE_NAME+"/",req_head)
+			req_head = new_headers[0]
+			#hacky fix for https://github.com/RhinoSecurityLabs/IPRotate_Burp_Extension/issues/14
+			if 'http://' in req_head or 'https://' in req_head:
+				cur_path = re.findall('https?:\/\/.*?\/(.*) ',req_head)[0]
+				new_headers[0] = re.sub(' (.*?) '," /"+STAGE_NAME+"/"+cur_path+" ",req_head)
+
+			else:
+				new_headers[0] = re.sub(' \/'," /"+STAGE_NAME+"/",req_head)
 
 			#Replace the Host header with the Gateway host
 			for header in new_headers:
