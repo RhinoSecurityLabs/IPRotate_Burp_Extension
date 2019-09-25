@@ -23,6 +23,9 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 	def __init__(self):
 		self.allEndpoints = []
 		self.currentEndpoint = 0
+		self.aws_access_key_id = ''
+		self.aws_secret_accesskey = ''
+		self.enabled_regions = {}
 
 
 	def registerExtenderCallbacks(self, callbacks):
@@ -178,6 +181,10 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 
 	#Called on "save" button click to save the settings
 	def saveKeys(self, event):
+		aws_access_key_id=self.access_key.text
+		aws_secret_access_key=self.secret_key.text
+		self.callbacks.saveExtensionSetting("aws_access_key_id", aws_access_key_id)
+		self.callbacks.saveExtensionSetting("aws_secret_access_key", aws_secret_access_key)
 		return
 
 	#Called on "Enable" button click to spin up the API Gateway
@@ -277,6 +284,13 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 
 	#Layout the UI
 	def getUiComponent(self):
+		aws_access_key_id = self.callbacks.loadExtensionSetting("aws_access_key_id")
+		aws_secret_accesskey = self.callbacks.loadExtensionSetting("aws_secret_access_key")
+		if aws_access_key_id:
+			self.aws_access_key_id = aws_access_key_id
+		if aws_secret_accesskey:
+			self.aws_secret_accesskey = aws_secret_accesskey
+
 		self.panel = JPanel()
 
 		self.main = JPanel()
@@ -286,14 +300,14 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 		self.main.add(self.access_key_panel)
 		self.access_key_panel.setLayout(BoxLayout(self.access_key_panel, BoxLayout.X_AXIS))
 		self.access_key_panel.add(JLabel('Access Key: '))
-		self.access_key = JTextField('', 25)
+		self.access_key = JTextField(self.aws_access_key_id,25)
 		self.access_key_panel.add(self.access_key)
 
 		self.secret_key_panel = JPanel()
 		self.main.add(self.secret_key_panel)
 		self.secret_key_panel.setLayout(BoxLayout(self.secret_key_panel, BoxLayout.X_AXIS))
 		self.secret_key_panel.add(JLabel('Secret Key: '))
-		self.secret_key = JPasswordField('', 25)
+		self.secret_key = JPasswordField(self.aws_secret_accesskey,25)
 		self.secret_key_panel.add(self.secret_key)
 
 		self.target_host_panel = JPanel()
@@ -306,8 +320,8 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 		self.buttons_panel = JPanel()
 		self.main.add(self.buttons_panel)
 		self.buttons_panel.setLayout(BoxLayout(self.buttons_panel, BoxLayout.X_AXIS))
-		#self.save_button = JButton('Save', actionPerformed = self.saveKeys) #not implemented yet
-		#self.buttons_panel.add(self.save_button)
+		self.save_button = JButton('Save Keys', actionPerformed = self.saveKeys)
+		self.buttons_panel.add(self.save_button)
 		self.enable_button = JButton('Enable', actionPerformed = self.enableGateway)
 		self.buttons_panel.add(self.enable_button)
 		self.disable_button = JButton('Disable', actionPerformed = self.disableGateway)
