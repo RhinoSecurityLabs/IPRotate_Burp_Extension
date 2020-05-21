@@ -99,7 +99,11 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 				restApiId=self.create_api_response['id'],
 				resourceId=get_resource_response['items'][0]['id'],
 				httpMethod='ANY',
-				authorizationType='NONE'
+				authorizationType='NONE',
+				requestParameters={
+					'method.request.path.proxy':True,
+					'method.request.header.X-My-X-Forwarded-For':True
+                                }
 			)
 
 			self.awsclient.put_integration(
@@ -109,7 +113,11 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 				httpMethod='ANY',
 				integrationHttpMethod='ANY',
 				uri=self.getTargetProtocol()+'://'+self.target_host.text + '/',
-				connectionType='INTERNET'
+				connectionType='INTERNET',
+				requestParameters={
+					'integration.request.path.proxy':'method.request.path.proxy',
+                                        'integration.request.header.X-Forwarded-For': 'method.request.header.X-My-X-Forwarded-For'
+				}
 			)
 
 			self.awsclient.put_method(
@@ -118,7 +126,8 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 				httpMethod='ANY',
 				authorizationType='NONE',
 				requestParameters={
-					'method.request.path.proxy':True
+					'method.request.path.proxy':True,
+					'method.request.header.X-My-X-Forwarded-For':True
 				}
 			)
 
@@ -131,7 +140,8 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 				uri= self.getTargetProtocol()+'://'+self.target_host.text+'/{proxy}',
 				connectionType= 'INTERNET',
 				requestParameters={
-					'integration.request.path.proxy':'method.request.path.proxy'
+					'integration.request.path.proxy':'method.request.path.proxy',
+                                        'integration.request.header.X-Forwarded-For': 'method.request.header.X-My-X-Forwarded-For'
 				}
 			)
 
