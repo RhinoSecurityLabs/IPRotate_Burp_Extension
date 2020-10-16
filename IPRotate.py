@@ -185,6 +185,11 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 					restApiId=self.enabled_regions[region]
 				)
 				print response
+
+				self.awsclient.delete_usage_plan(
+					usagePlanId=self.usage_response['id']
+				)
+
 		self.enabled_regions = {}
 		self.allEndpoints = []
 		return
