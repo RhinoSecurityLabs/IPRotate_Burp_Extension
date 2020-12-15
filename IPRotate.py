@@ -120,31 +120,6 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 				}
 			)
 
-			self.awsclient.put_method(
-				restApiId=self.create_api_response['id'],
-				resourceId=create_resource_response['id'],
-				httpMethod='ANY',
-				authorizationType='NONE',
-				requestParameters={
-					'method.request.path.proxy':True,
-					'method.request.header.X-My-X-Forwarded-For':True
-				}
-			)
-
-			self.awsclient.put_integration(
-				restApiId=self.create_api_response['id'],
-				resourceId=create_resource_response['id'],
-				type= 'HTTP_PROXY', 
-				httpMethod= 'ANY',
-				integrationHttpMethod='ANY',
-				uri= self.getTargetProtocol()+'://'+self.target_host.text+'/{proxy}',
-				connectionType= 'INTERNET',
-				requestParameters={
-					'integration.request.path.proxy':'method.request.path.proxy',
-                                        'integration.request.header.X-Forwarded-For': 'method.request.header.X-My-X-Forwarded-For'
-				}
-			)
-
 			self.deploy_response = self.awsclient.create_deployment(
 				restApiId=self.restAPIId,
 				stageName=STAGE_NAME
