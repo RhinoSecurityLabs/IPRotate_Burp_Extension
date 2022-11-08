@@ -12,6 +12,8 @@ This is useful to bypass different kinds of IP blocking like bruteforce protecti
 
 ## Usage
 
+### With Python2 ENV set
+
 1. Setup [Jython](https://www.jython.org/download.html) in Burp Suite.
 2. Install the [boto3](https://github.com/boto/boto3) module for Python 2.
    1. Make sure that you setup your [python environment in burp](https://portswigger.net/burp/documentation/desktop/tools/extender#python-environment) to load the [boto3](https://github.com/boto/boto3) module properly or it won't find it.
@@ -24,6 +26,32 @@ This is useful to bypass different kinds of IP blocking like bruteforce protecti
 9. Once you are done ensure you click disable to delete all the resources which were started.
 
 If you want to check on the resources and enpoints that were started or any potential errors you can look at the output console in Burp.
+
+### Without Python2 ENV set
+
+Use helper script for creating API GW in your AWS account. It requires `boto3` but it does not need to be setup for Burp, and you need to have valid AWS profile setup:
+
+```
+Usage: createapigws.py [OPTIONS]
+
+Options:
+  --profile TEXT     AWS profile to use  [default: pentest1]
+  --state-file TEXT  API GW state directory, script creates STATE_FILE and
+                     STATE_FILE.json.  [default: api_gateways.txt]
+  --create TEXT      specify target URL: https://example.com
+  --delete
+  --help             Show this message and exit.
+```
+
+1. Setup [Jython](https://www.jython.org/download.html) in Burp Suite.
+2. Ensure you have a set of AWS keys and profile setup that have full access to the API Gateway service. This is available through the free tier of AWS.
+3. Insert state file path from `createapigws.py` to API GW File.
+4. Insert the target domain you wish to target.
+5. Insert the stage name to Stage name if required.
+6. Select HTTPS if the domain is hosted over HTTPS.
+7. Click "Enable".
+8. Once you are done ensure you click disable.
+9. To delete you API GWs use `createapigws.py` script.
 
 ### The Burp UI
 
