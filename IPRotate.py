@@ -4,13 +4,19 @@
 
 from javax.swing import JPanel, JTextField, JButton, JLabel, BoxLayout, JPasswordField, JCheckBox, JRadioButton, ButtonGroup
 from burp import IBurpExtender, IExtensionStateListener, ITab, IHttpListener
-from java.awt import GridLayout
-import boto3
+from java.awt import GridLayout, Color
+try:
+	import boto3
+	BOTO3_AVAILABLE=True
+except Exception as e:
+	BOTO3_AVAILABLE=False
+	print('Unable to import boto3, create API Gateway manually using createapigw.py script, and load them from file.', e)
+
 import re
 
 EXT_NAME = 'IP Rotate'
-ENABLED = '<html><h2><font color="green">Enabled</font></h2></html>'
-DISABLED = '<html><h2><font color="red">Disabled</font></h2></html>'
+ENABLED = 'ENABLED'
+DISABLED = 'DISABLED'
 STAGE_NAME = 'burpendpoint'
 API_NAME = 'BurpAPI'
 AVAIL_REGIONS = [
@@ -26,7 +32,6 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 		self.aws_access_key_id = ''
 		self.aws_secret_accesskey = ''
 		self.enabled_regions = {}
-
 
 	def registerExtenderCallbacks(self, callbacks):
 		self.callbacks = callbacks
@@ -199,31 +204,57 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 
 	#Called on "Enable" button click to spin up the API Gateway
 	def enableGateway(self, event):
-		self.startAPIGateway()
+		if BOTO3_AVAILABLE and not self.load_from_file.text:
+			self.startAPIGateway()
+
+			self.secret_key.setEnabled(False)
+			self.access_key.setEnabled(False)
+		elif len(self.allEndpoints) == 0:
+			print('load API GW endpoints from file')
+			return
+
 		self.status_indicator.text = ENABLED
+		self.status_indicator.setForeground(Color(0x00FF00))
 		self.isEnabled = True
 		self.enable_button.setEnabled(False)
-		self.secret_key.setEnabled(False)
-		self.access_key.setEnabled(False)
 		self.target_host.setEnabled(False)
 		self.disable_button.setEnabled(True)
 		return
 
 	#Called on "Disable" button click to delete API Gateway
 	def disableGateway(self, event):
-		self.deleteAPIGateway()
+		if BOTO3_AVAILABLE and not self.load_from_file.text:
+			self.deleteAPIGateway()
+			self.secret_key.setEnabled(True)
+			self.access_key.setEnabled(True)
+		
 		self.status_indicator.text = DISABLED
+		self.status_indicator.setForeground(Color(0xFF0000))
 		self.isEnabled = False
 		self.enable_button.setEnabled(True)
-		self.secret_key.setEnabled(True)
-		self.access_key.setEnabled(True)
+		self.stage_name.setEnabled(True)
 		self.target_host.setEnabled(True)
 		self.disable_button.setEnabled(False)
 		return
 
-	def getCurrEndpoint():
+	def getCurrEndpoint(self):
 
 		return 
+
+	def loadFromFile(self, event):
+		print('loading from file: '+self.load_from_file.text)
+		self.allEndpoints = []
+
+		with open(self.load_from_file.text, 'r') as f:
+			
+			for endpoint in f.readlines():
+				endpoint = endpoint.strip()
+				print('loading endpoint: ' + endpoint)
+
+				self.allEndpoints.append(endpoint)
+		print('loaded endpoints: {}'.format(len(self.allEndpoints)))
+		self.status_indicator.text = 'loaded endpoints: {}'.format(len(self.allEndpoints))
+
 
 	#Traffic redirecting
 	def processHttpMessage(self, toolFlag, messageIsRequest, messageInfo):
@@ -265,10 +296,10 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 			#hacky fix for https://github.com/RhinoSecurityLabs/IPRotate_Burp_Extension/issues/14
 			if 'http://' in req_head or 'https://' in req_head:
 				cur_path = re.findall('https?:\/\/.*?\/(.*) ',req_head)[0]
-				new_headers[0] = re.sub(' (.*?) '," /"+STAGE_NAME+"/"+cur_path+" ",req_head)
+				new_headers[0] = re.sub(' (.*?) '," /"+self.stage_name.text+"/"+cur_path+" ",req_head)
 
 			else:
-				new_headers[0] = re.sub(' \/'," /"+STAGE_NAME+"/",req_head)
+				new_headers[0] = re.sub(' \/'," /"+self.stage_name.text+"/",req_head)
 
 			#Replace the Host header with the Gateway host
 			for header in new_headers:
@@ -296,10 +327,16 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 	def getUiComponent(self):
 		aws_access_key_id = self.callbacks.loadExtensionSetting("aws_access_key_id")
 		aws_secret_accesskey = self.callbacks.loadExtensionSetting("aws_secret_access_key")
+		load_from_file = self.callbacks.loadExtensionSetting("load_from_file")
+		stage_name = self.callbacks.loadExtensionSetting("stage_name")
 		if aws_access_key_id:
 			self.aws_access_key_id = aws_access_key_id
 		if aws_secret_accesskey:
 			self.aws_secret_accesskey = aws_secret_accesskey
+		if not stage_name:
+			stage_name = STAGE_NAME
+		if not aws_secret_accesskey:
+			load_from_file = ''
 
 		self.panel = JPanel()
 
@@ -312,6 +349,7 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 		self.access_key_panel.add(JLabel('Access Key: '))
 		self.access_key = JTextField(self.aws_access_key_id,25)
 		self.access_key_panel.add(self.access_key)
+		self.access_key.setEnabled(BOTO3_AVAILABLE)
 
 		self.secret_key_panel = JPanel()
 		self.main.add(self.secret_key_panel)
@@ -319,6 +357,21 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 		self.secret_key_panel.add(JLabel('Secret Key: '))
 		self.secret_key = JPasswordField(self.aws_secret_accesskey,25)
 		self.secret_key_panel.add(self.secret_key)
+		self.secret_key.setEnabled(BOTO3_AVAILABLE)
+
+		self.load_from_file_panel = JPanel()
+		self.main.add(self.load_from_file_panel)
+		self.load_from_file_panel.setLayout(BoxLayout(self.load_from_file_panel, BoxLayout.X_AXIS))
+		self.load_from_file_panel.add(JLabel('API GW file: '))
+		self.load_from_file = JTextField(load_from_file,25)
+		self.load_from_file_panel.add(self.load_from_file)
+		
+		self.stage_name_panel = JPanel()
+		self.main.add(self.stage_name_panel)
+		self.stage_name_panel.setLayout(BoxLayout(self.stage_name_panel, BoxLayout.X_AXIS))
+		self.stage_name_panel.add(JLabel('Stage name: '))
+		self.stage_name = JTextField(stage_name,25)
+		self.stage_name_panel.add(self.stage_name)
 
 		self.target_host_panel = JPanel()
 		self.main.add(self.target_host_panel)
@@ -332,11 +385,14 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 		self.buttons_panel.setLayout(BoxLayout(self.buttons_panel, BoxLayout.X_AXIS))
 		self.save_button = JButton('Save Keys', actionPerformed = self.saveKeys)
 		self.buttons_panel.add(self.save_button)
+		self.save_button.setEnabled(BOTO3_AVAILABLE)
 		self.enable_button = JButton('Enable', actionPerformed = self.enableGateway)
 		self.buttons_panel.add(self.enable_button)
 		self.disable_button = JButton('Disable', actionPerformed = self.disableGateway)
 		self.buttons_panel.add(self.disable_button)
 		self.disable_button.setEnabled(False)
+		self.load_from_file_button = JButton('Load from file', actionPerformed = self.loadFromFile)
+		self.buttons_panel.add(self.load_from_file_button)
 
 		self.protocol_panel = JPanel()
 		self.main.add(self.protocol_panel)
@@ -369,7 +425,9 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 		self.main.add(self.status)
 		self.status.setLayout(BoxLayout(self.status, BoxLayout.X_AXIS))
 		self.status_indicator = JLabel(DISABLED,JLabel.CENTER)
+		self.status_indicator.setForeground(Color(0xFF0000))
 		self.status.add(self.status_indicator)
 		
 		self.panel.add(self.main)
 		return self.panel
+
