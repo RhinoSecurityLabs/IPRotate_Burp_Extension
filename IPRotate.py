@@ -70,6 +70,7 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 		self.aws_access_key_id = ''
 		self.aws_secret_accesskey = ''
 		self.enabled_regions = {}
+		self.debug = False
 
 	def registerExtenderCallbacks(self, callbacks):
 		self.callbacks = callbacks
@@ -331,12 +332,20 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 			else:
 				self.currentEndpoint = 0
 			
+			if self.debug:
+				print "====================================================="
+				print messageInfo.getHttpService().getHost()
+				print '-----------------------------------------------------'
+
 			messageInfo.setHttpService(
 				self.helpers.buildHttpService(
 					self.allEndpoints[self.currentEndpoint],
 					443, True
 				)
 			)
+			if self.debug:
+				print messageInfo.getHttpService().getHost()
+				print "====================================================="
 
 			requestInfo = self.helpers.analyzeRequest(messageInfo)
 			new_headers = requestInfo.headers
@@ -355,7 +364,7 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 			for header in new_headers:
 				if header.startswith('Host: '):
 					host_header_index = new_headers.index(header)
-					new_headers[host_header_index] = 'Host: '+self.allEndpoints[self.currentEndpoint]
+					new_headers[host_header_index] = 'Host: ' + messageInfo.getHttpService().getHost()
 
 			#Update the headers insert the existing body
 			body = messageInfo.request[requestInfo.getBodyOffset():len(messageInfo.request)]
@@ -420,7 +429,7 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 		self.main.add(self.target_host_panel)
 		self.target_host_panel.setLayout(BoxLayout(self.target_host_panel, BoxLayout.X_AXIS))
 		self.target_host_panel.add(JLabel('Target host: '))
-		self.target_host = JTextField('example.com', 25)
+		self.target_host = JTextField('ipinfo.io', 25)
 		self.target_host_panel.add(self.target_host)
 
 		self.buttons_panel = JPanel()
@@ -490,5 +499,6 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 		self.status.add(self.status_indicator)
 		
 		self.panel.add(self.main)
+		print "UI loaded"
 		return self.panel
 
