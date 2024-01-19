@@ -105,16 +105,37 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 	#Uses boto3 to test the AWS keys and make sure they are valid NOT IMPLEMENTED
 	def testKeys(self):
 		return
+	
+	def create_boto3_client(self, service_name, profile_name=None, access_key=None, secret_key=None, region=None):
+		"""
+		Creates a boto3 client for a given service.
+
+		:param service_name: Name of the AWS service (e.g., 's3', 'ec2').
+		:param profile_name: The name of the AWS profile to use.
+		:param access_key: AWS access key ID.
+		:param secret_key: AWS secret access key.
+		:return: Boto3 client for the specified service.
+		"""
+		if profile_name:
+			# Create a session using a specific profile
+			session = boto3.Session(profile_name=profile_name)
+			client = session.client(service_name, region_name=region)
+		elif access_key and secret_key:
+			# Create a client using access keys
+			client = boto3.client(service_name, aws_access_key_id=access_key, aws_secret_access_key=secret_key, region_name=region)
+
+		return client
 
 	#Uses boto3 to spin up an API Gateway
 	def startAPIGateway(self):
 		self.getRegions()
 		for region in self.enabled_regions.keys():
 			try:
-				self.awsclient = boto3.client('apigateway',
-					aws_access_key_id=self.access_key.text,
-					aws_secret_access_key=self.secret_key.text,
-					region_name=region
+				self.awsclient = self.create_boto3_client('apigateway',
+					profile_name=self.aws_profile_name,
+					access_key=self.aws_access_key_id,
+					secret_key=self.aws_secret_access_key,
+					region=region
 				)
 
 				self.create_api_response = self.awsclient.create_rest_api(
@@ -218,25 +239,35 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 
 		#Print out some info to burp console
 		print 'Following regions and API IDs started:'
-		print self.enabled_regions
+		for enabled_region in self.enabled_regions:
+			print enabled_region+":"+self.enabled_regions[enabled_region]
 		print 'List of endpoints being used:'
-		print self.allEndpoints
+		for endpoint in self.allEndpoints:
+			print endpoint
 		return
 
 	#Uses boto3 to delete the API Gateway
 	def deleteAPIGateway(self):
 		if self.enabled_regions:
 			for region in self.enabled_regions.keys():
-				self.awsclient = boto3.client('apigateway',
-					aws_access_key_id=self.access_key.text,
-					aws_secret_access_key=self.secret_key.text,
-					region_name=region
-				)
+				print "Deleting APIs in region: "+region
+				try:
+					self.awsclient = self.create_boto3_client('apigateway',
+						profile_name=self.aws_profile_name,
+						access_key=self.aws_access_key_id,
+						secret_key=self.aws_secret_access_key,
+						region=region
+					)
 
-				response = self.awsclient.delete_rest_api(
-					restApiId=self.enabled_regions[region]
-				)
-				print response
+					response = self.awsclient.delete_rest_api(
+						restApiId=self.enabled_regions[region]
+					)
+					print "Deleted "+self.enabled_regions[region]+" From "+region
+				except Exception as e:
+					print e
+					print "Failed to delete: "+self.enabled_regions[region]+" In "+region
+					continue
+
 		self.enabled_regions = {}
 		self.allEndpoints = []
 		return
@@ -252,6 +283,19 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 	#Called on "Enable" button click to spin up the API Gateway
 	def enableGateway(self, event):
 		if BOTO3_AVAILABLE and not self.load_from_file.text:
+
+			# Setup the credentials
+			if self.profile_name.text:
+				print "Using AWS Profile: "+self.profile_name.text
+				self.aws_profile_name = self.profile_name.text
+				self.aws_access_key_id = None
+				self.aws_secret_access_key = None
+			else:
+				print "Using Access keys for AWS auth."
+				self.aws_profile_name = None
+				self.aws_access_key_id = self.access_key.text
+				self.aws_secret_access_key = self.secret_key.text
+
 			self.startAPIGateway()
 
 			self.secret_key.setEnabled(False)
@@ -393,6 +437,22 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 		self.main = JPanel()
 		self.main.setLayout(BoxLayout(self.main, BoxLayout.Y_AXIS))
 
+		self.profile_name_panel = JPanel()
+		self.main.add(self.profile_name_panel)
+		self.profile_name_panel.setLayout(BoxLayout(self.profile_name_panel, BoxLayout.X_AXIS))
+		self.profile_name_panel.add(JLabel('AWS Profile Name: '))
+		self.profile_name = JTextField("",25)
+		self.profile_name_panel.add(self.profile_name)
+		self.profile_name.setEnabled(BOTO3_AVAILABLE)
+
+		# Adding space between the panels
+		verticalStrut = Box.createVerticalStrut(10)  # Adjust 10 to increase/decrease spacing
+		self.main.add(verticalStrut)
+		
+		self.optional_label = JPanel()
+		self.main.add(self.optional_label)
+		self.optional_label.add(JLabel('Or'))
+
 		self.access_key_panel = JPanel()
 		self.main.add(self.access_key_panel)
 		self.access_key_panel.setLayout(BoxLayout(self.access_key_panel, BoxLayout.X_AXIS))
@@ -408,6 +468,10 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 		self.secret_key = JPasswordField(self.aws_secret_accesskey,25)
 		self.secret_key_panel.add(self.secret_key)
 		self.secret_key.setEnabled(BOTO3_AVAILABLE)
+
+		# Adding space between the panels
+		verticalStrut = Box.createVerticalStrut(10)  # Adjust 10 to increase/decrease spacing
+		self.main.add(verticalStrut)
 		
 		self.stage_name_panel = JPanel()
 		self.main.add(self.stage_name_panel)
