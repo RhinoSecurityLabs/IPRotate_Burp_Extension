@@ -1,0 +1,17 @@
+concurrent/__init__.py,sha256=qEFeq3yuf3lQKVseALmL8aPM8fpCS54B_5pry00M3hk,76
+concurrent/__init__.pyc,,
+concurrent/futures/__init__.py,sha256=lErVwp1Kv_co1PKmfYCHvBhWZ_ONtg-bk9v74BG1Q8w,887
+concurrent/futures/__init__.pyc,,
+concurrent/futures/_base.py,sha256=HfB8EMpqI3obaV3X2t5Lglf-sWOeJLmChYvIddlpRyY,23929
+concurrent/futures/_base.pyc,,
+concurrent/futures/process.py,sha256=EYkBPI7SxaGidqQnsRxCIJqj2h4Sknrdq_Ys5Ak5V-0,14985
+concurrent/futures/process.pyc,,
+concurrent/futures/thread.py,sha256=QfKXrl7z2giTwQv-LGCo2ShI_7i_emvmDW2C14H9a2g,7229
+concurrent/futures/thread.pyc,,
+futures-3.4.0.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
+futures-3.4.0.dist-info/LICENSE,sha256=ppi9XUQeShavbJkrjoDL-hJ1XXLZEIVPofsR1N6wBZo,2395
+futures-3.4.0.dist-info/METADATA,sha256=edhBpl3c4nut_CNlv8KBxvgEQla6csmMsBmDNVVfcGY,1915
+futures-3.4.0.dist-info/RECORD,,
+futures-3.4.0.dist-info/WHEEL,sha256=1VPi6hfNQaRRNuEdK_3dv9o8COtLGnHWJghhj4CQ28k,92
+futures-3.4.0.dist-info/pbr.json,sha256=WO34W8NlkI9xstQFuBj-3PdM01_TxUKyvnC9-kjSHiM,47
+futures-3.4.0.dist-info/top_level.txt,sha256=elL7bzFlkyVZr3M0gg0AeLUPt5OJ2F9uJcmu63VMt7A,11
