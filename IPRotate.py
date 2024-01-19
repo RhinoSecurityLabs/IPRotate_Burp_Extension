@@ -469,7 +469,7 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 
 		self.regions_title = JPanel()
 		self.main.add(self.regions_title)
-		self.regions_title.add(JLabel("Regions to launch API Gateways in (Check all will use all valid regions):"))
+		self.regions_title.add(JLabel("Regions to launch API Gateways in (Any failed regions will be skipped):"))
 
 		self.regions_panel = JPanel()
 		self.main.add(self.regions_panel)
