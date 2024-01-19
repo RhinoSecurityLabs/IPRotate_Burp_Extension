@@ -70,7 +70,6 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 		self.aws_access_key_id = ''
 		self.aws_secret_accesskey = ''
 		self.enabled_regions = {}
-		self.debug = False
 
 	def registerExtenderCallbacks(self, callbacks):
 		self.callbacks = callbacks
@@ -331,11 +330,6 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 			#Reset to 0 when end it reached
 			else:
 				self.currentEndpoint = 0
-			
-			if self.debug:
-				print "====================================================="
-				print messageInfo.getHttpService().getHost()
-				print '-----------------------------------------------------'
 
 			messageInfo.setHttpService(
 				self.helpers.buildHttpService(
@@ -343,9 +337,6 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 					443, True
 				)
 			)
-			if self.debug:
-				print messageInfo.getHttpService().getHost()
-				print "====================================================="
 
 			requestInfo = self.helpers.analyzeRequest(messageInfo)
 			new_headers = requestInfo.headers
