@@ -12,22 +12,22 @@ This is useful to bypass different kinds of IP blocking like bruteforce protecti
 
 ## Usage
 
+A version of this is available in the BApp store which you can install from there directly: https://portswigger.net/bappstore/2eb2b1cb1cf34cc79cda36f0f9019874
+
 ### With Python2 ENV set
 
 1. Setup [Jython](https://www.jython.org/download.html) in Burp Suite.
-2. Install the [boto3](https://github.com/boto/boto3) module for Python 2.
-   1. Make sure that you setup your [python environment in burp](https://portswigger.net/burp/documentation/desktop/tools/extender#python-environment) to load the [boto3](https://github.com/boto/boto3) module properly or it won't find it.
 3. Ensure you have a set of AWS keys that have full access to the API Gateway service. This is available through the free tier of AWS.
 4. Insert the credentials into the fields.
 5. Insert the target domain you wish to target.
 6. Select HTTPS if the domain is hosted over HTTPS.
-7. Select all the regions you want to use.(The more you use the larger the IP pool will be)
+7. Select all the regions you want to use, if you leave them all selected all valid regions will automatically be enabled.(The more you use the larger the IP pool will be)
 8. Click "Enable".
 9. Once you are done ensure you click disable to delete all the resources which were started.
 
 If you want to check on the resources and enpoints that were started or any potential errors you can look at the output console in Burp.
 
-### Without Python2 ENV set
+### Without Python2 ENV set (Advanced)
 
 Use helper script for creating API GW in your AWS account. It requires `boto3` but it does not need to be setup for Burp, and you need to have valid AWS profile setup:
 
