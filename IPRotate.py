@@ -5,6 +5,13 @@
 from javax.swing import JPanel, JTextField, JButton, JLabel, BoxLayout, JPasswordField, JCheckBox, JRadioButton, ButtonGroup
 from burp import IBurpExtender, IExtensionStateListener, ITab, IHttpListener
 from java.awt import GridLayout, Color
+import os
+import sys
+
+# Include ./lib in the sys path so we can import boto3 from it
+lib_path = os.path.abspath('./lib')
+sys.path.append(lib_path)
+
 try:
 	import boto3
 	BOTO3_AVAILABLE=True
