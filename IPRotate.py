@@ -2,7 +2,7 @@
 #Burp Suite extension which uses AWS API Gateway to change your IP on every request to bypass IP blocking.
 #More Info: https://rhinosecuritylabs.com/aws/bypassing-ip-based-blocking-aws/
 
-from javax.swing import JPanel, JTextField, JButton, JLabel, BoxLayout, JPasswordField, JCheckBox, JRadioButton, ButtonGroup
+from javax.swing import JPanel, JTextField, JButton, JLabel, BoxLayout, JPasswordField, JCheckBox, JRadioButton, ButtonGroup, Box
 from burp import IBurpExtender, IExtensionStateListener, ITab, IHttpListener
 from java.awt import GridLayout, Color
 import os
@@ -13,6 +13,7 @@ lib_path = os.path.abspath('./lib')
 sys.path.append(lib_path)
 
 try:
+	import botocore.exceptions
 	import boto3
 	BOTO3_AVAILABLE=True
 except Exception as e:
@@ -109,20 +110,29 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 	def startAPIGateway(self):
 		self.getRegions()
 		for region in self.enabled_regions.keys():
-			self.awsclient = boto3.client('apigateway',
-				aws_access_key_id=self.access_key.text,
-				aws_secret_access_key=self.secret_key.text,
-				region_name=region
-			)
+			try:
+				self.awsclient = boto3.client('apigateway',
+					aws_access_key_id=self.access_key.text,
+					aws_secret_access_key=self.secret_key.text,
+					region_name=region
+				)
 
-			self.create_api_response = self.awsclient.create_rest_api(
-				name=API_NAME,
-				endpointConfiguration={
-					'types': [
-						'REGIONAL',
-					]
-				}
-			)
+				self.create_api_response = self.awsclient.create_rest_api(
+					name=API_NAME,
+					endpointConfiguration={
+						'types': [
+							'REGIONAL',
+						]
+					}
+				)
+			except botocore.exceptions.ClientError:
+				print "Starting API Gateway in "+region+" failed, skipping."
+				cur_region = region.replace('-','_')
+				cur_region = cur_region+'_status'
+				region_status = getattr(self,cur_region)
+				region_status.setSelected(False)
+				del(self.enabled_regions[region])
+				continue
 
 			get_resource_response = self.awsclient.get_resources(
 				restApiId=self.create_api_response['id']
@@ -250,13 +260,16 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 			print('load API GW endpoints from file')
 			return
 
-		self.status_indicator.text = ENABLED
-		self.status_indicator.setForeground(Color(0x00FF00))
-		self.isEnabled = True
-		self.enable_button.setEnabled(False)
-		self.target_host.setEnabled(False)
-		self.disable_button.setEnabled(True)
-		return
+		if self.allEndpoints:
+			self.status_indicator.text = ENABLED
+			self.status_indicator.setForeground(Color(0x00FF00))
+			self.isEnabled = True
+			self.enable_button.setEnabled(False)
+			self.target_host.setEnabled(False)
+			self.disable_button.setEnabled(True)
+			return
+		else:
+			return
 
 	#Called on "Disable" button click to delete API Gateway
 	def disableGateway(self, event):
@@ -395,13 +408,6 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 		self.secret_key = JPasswordField(self.aws_secret_accesskey,25)
 		self.secret_key_panel.add(self.secret_key)
 		self.secret_key.setEnabled(BOTO3_AVAILABLE)
-
-		self.load_from_file_panel = JPanel()
-		self.main.add(self.load_from_file_panel)
-		self.load_from_file_panel.setLayout(BoxLayout(self.load_from_file_panel, BoxLayout.X_AXIS))
-		self.load_from_file_panel.add(JLabel('API GW file: '))
-		self.load_from_file = JTextField(load_from_file,25)
-		self.load_from_file_panel.add(self.load_from_file)
 		
 		self.stage_name_panel = JPanel()
 		self.main.add(self.stage_name_panel)
@@ -428,8 +434,6 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 		self.disable_button = JButton('Disable', actionPerformed = self.disableGateway)
 		self.buttons_panel.add(self.disable_button)
 		self.disable_button.setEnabled(False)
-		self.load_from_file_button = JButton('Load from file', actionPerformed = self.loadFromFile)
-		self.buttons_panel.add(self.load_from_file_button)
 
 		self.protocol_panel = JPanel()
 		self.main.add(self.protocol_panel)
@@ -443,9 +447,29 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 		buttongroup.add(self.https_button)
 		buttongroup.add(self.http_button)
 
+		# Adding space between the panels
+		verticalStrut = Box.createVerticalStrut(10)  # Adjust 10 to increase/decrease spacing
+		self.main.add(verticalStrut)
+		
+		self.optional_label = JPanel()
+		self.main.add(self.optional_label)
+		self.optional_label.add(JLabel('Optional/Advanced'))
+
+		self.load_from_file_panel = JPanel()
+		self.main.add(self.load_from_file_panel)
+		self.load_from_file_panel.setLayout(BoxLayout(self.load_from_file_panel, BoxLayout.X_AXIS))
+		self.load_from_file_panel.add(JLabel('API GW file: '))
+		self.load_from_file = JTextField(load_from_file,25)
+		self.load_from_file_panel.add(self.load_from_file)
+
+		self.load_from_file_panel = JPanel()
+		self.main.add(self.load_from_file_panel)
+		self.load_from_file_button = JButton('Load from file', actionPerformed = self.loadFromFile)
+		self.load_from_file_panel.add(self.load_from_file_button)
+
 		self.regions_title = JPanel()
 		self.main.add(self.regions_title)
-		self.regions_title.add(JLabel("Regions to launch API Gateways in:"))
+		self.regions_title.add(JLabel("Regions to launch API Gateways in (Check all will use all valid regions):"))
 
 		self.regions_panel = JPanel()
 		self.main.add(self.regions_panel)
