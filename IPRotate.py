@@ -129,6 +129,13 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 	#Uses boto3 to spin up an API Gateway
 	def startAPIGateway(self):
 		self.getRegions()
+
+		for region in AVAIL_REGIONS:
+			cur_region = region.replace('-','_')
+			cur_region = cur_region+'_status'
+			attr = getattr(self,cur_region)
+			attr.setEnabled(False)
+
 		for region in self.enabled_regions.keys():
 			try:
 				self.awsclient = self.create_boto3_client('apigateway',
@@ -248,6 +255,13 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 
 	#Uses boto3 to delete the API Gateway
 	def deleteAPIGateway(self):
+
+		for region in AVAIL_REGIONS:
+			cur_region = region.replace('-','_')
+			cur_region = cur_region+'_status'
+			attr = getattr(self,cur_region)
+			attr.setEnabled(True)
+
 		if self.enabled_regions:
 			for region in self.enabled_regions.keys():
 				print "Deleting APIs in region: "+region
@@ -542,7 +556,7 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 		for region in AVAIL_REGIONS:
 			cur_region = region.replace('-','_')
 			cur_region = cur_region+'_status'
-			setattr(self,cur_region,JCheckBox(region,True))
+			setattr(self,cur_region,JCheckBox(region,False))
 			attr = getattr(self,cur_region)
 			self.regions_panel.add(attr)
 
