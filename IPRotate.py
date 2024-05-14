@@ -7,6 +7,7 @@ from burp import IBurpExtender, IExtensionStateListener, ITab, IHttpListener
 from java.awt import GridLayout, Color
 import os
 import sys
+import random
 
 # Include ./lib in the sys path so we can import boto3 from it
 lib_path = os.path.abspath('./lib')
@@ -162,7 +163,7 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 			self.restAPIId = self.create_api_response['id']
 			self.enabled_regions[region] = self.restAPIId
 
-			create_resource_response = self.awsclient.create_resource(
+			self.awsclient.create_resource(
 				restApiId=self.create_api_response['id'],
 				parentId=get_resource_response['items'][0]['id'],
 				pathPart='{proxy+}'
@@ -187,31 +188,6 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 				integrationHttpMethod='ANY',
 				uri=self.getTargetProtocol()+'://'+self.target_host.text + '/',
 				connectionType='INTERNET',
-				requestParameters={
-					'integration.request.path.proxy':'method.request.path.proxy',
-                                        'integration.request.header.X-Forwarded-For': 'method.request.header.X-My-X-Forwarded-For'
-				}
-			)
-
-			self.awsclient.put_method(
-				restApiId=self.create_api_response['id'],
-				resourceId=create_resource_response['id'],
-				httpMethod='ANY',
-				authorizationType='NONE',
-				requestParameters={
-					'method.request.path.proxy':True,
-					'method.request.header.X-My-X-Forwarded-For':True
-				}
-			)
-
-			self.awsclient.put_integration(
-				restApiId=self.create_api_response['id'],
-				resourceId=create_resource_response['id'],
-				type= 'HTTP_PROXY', 
-				httpMethod= 'ANY',
-				integrationHttpMethod='ANY',
-				uri= self.getTargetProtocol()+'://'+self.target_host.text+'/{proxy}',
-				connectionType= 'INTERNET',
 				requestParameters={
 					'integration.request.path.proxy':'method.request.path.proxy',
                                         'integration.request.header.X-Forwarded-For': 'method.request.header.X-My-X-Forwarded-For'
@@ -349,6 +325,9 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 		print('loaded endpoints: {}'.format(len(self.allEndpoints)))
 		self.status_indicator.text = 'loaded endpoints: {}'.format(len(self.allEndpoints))
 
+	# Generate a random IP to stick in the X-Forwarded-For header
+	def generateRandomIp(self):
+		return '.'.join(str(random.randint(0, 255)) for _ in range(4))
 
 	#Traffic redirecting
 	def processHttpMessage(self, toolFlag, messageIsRequest, messageInfo):
@@ -383,7 +362,7 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 			)
 
 			requestInfo = self.helpers.analyzeRequest(messageInfo)
-			new_headers = requestInfo.headers
+			new_headers = list(requestInfo.headers)
 
 			#Update the path to point to the API Gateway path
 			req_head = new_headers[0]
@@ -396,10 +375,17 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 				new_headers[0] = re.sub(' \/'," /"+self.stage_name.text+"/",req_head)
 
 			#Replace the Host header with the Gateway host
+			x_forwarded_header_in_request = False
 			for header in new_headers:
 				if header.startswith('Host: '):
 					host_header_index = new_headers.index(header)
 					new_headers[host_header_index] = 'Host: ' + messageInfo.getHttpService().getHost()
+				if header.startswith('X-Forwarded-For: '):
+					x_forwarded_header_in_request = True
+
+			random_ip = self.generateRandomIp()
+			if (not x_forwarded_header_in_request) and getattr(self,"xforwarded_status").isSelected():
+				new_headers.append('X-Forwarded-For: '+random_ip)
 
 			#Update the headers insert the existing body
 			body = messageInfo.request[requestInfo.getBodyOffset():len(messageInfo.request)]
@@ -416,6 +402,22 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 	def extensionUnloaded(self):
 		self.deleteAPIGateway()
 		return
+	
+	# Select all regions
+	def selectAllRegions(self, event):
+		for region in AVAIL_REGIONS:
+			cur_region = region.replace('-','_')
+			cur_region = cur_region+'_status'
+			region_status = getattr(self,cur_region)
+			region_status.setSelected(False)
+		
+	# Deselect all regions
+	def deselectAllRegions(self, event):
+		for region in AVAIL_REGIONS:
+			cur_region = region.replace('-','_')
+			cur_region = cur_region+'_status'
+			region_status = getattr(self,cur_region)
+			region_status.setSelected(True)
 
 	#Layout the UI
 	def getUiComponent(self):
@@ -514,6 +516,17 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 		# Adding space between the panels
 		verticalStrut = Box.createVerticalStrut(10)  # Adjust 10 to increase/decrease spacing
 		self.main.add(verticalStrut)
+
+		self.xforwardedfor_panel = JPanel()
+		self.main.add(self.xforwardedfor_panel)
+		self.xforwardedfor_panel.setLayout(BoxLayout(self.xforwardedfor_panel, BoxLayout.Y_AXIS))
+		setattr(self, "xforwarded_status", JCheckBox("Add random X-Forwarded-For header on each request", True))
+		attr = getattr(self, "xforwarded_status")
+		self.xforwardedfor_panel.add(attr)
+
+		# Adding space between the panels
+		verticalStrut = Box.createVerticalStrut(10)  # Adjust 10 to increase/decrease spacing
+		self.main.add(verticalStrut)
 		
 		self.optional_label = JPanel()
 		self.main.add(self.optional_label)
@@ -534,6 +547,14 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 		self.regions_title = JPanel()
 		self.main.add(self.regions_title)
 		self.regions_title.add(JLabel("Regions to launch API Gateways in (Any failed regions will be skipped):"))
+
+		self.buttons_panel2 = JPanel()
+		self.main.add(self.buttons_panel2)
+		self.buttons_panel2.setLayout(BoxLayout(self.buttons_panel2, BoxLayout.X_AXIS))
+		self.save_button = JButton('Select All', actionPerformed = self.deselectAllRegions)
+		self.buttons_panel2.add(self.save_button)
+		self.enable_button = JButton('Deselect All', actionPerformed = self.selectAllRegions)
+		self.buttons_panel2.add(self.enable_button)
 
 		self.regions_panel = JPanel()
 		self.main.add(self.regions_panel)
