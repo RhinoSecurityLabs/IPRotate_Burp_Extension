@@ -416,6 +416,22 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 	def extensionUnloaded(self):
 		self.deleteAPIGateway()
 		return
+	
+	# Select all regions
+	def selectAllRegions(self, event):
+		for region in AVAIL_REGIONS:
+			cur_region = region.replace('-','_')
+			cur_region = cur_region+'_status'
+			region_status = getattr(self,cur_region)
+			region_status.setSelected(False)
+		
+	# Deselect all regions
+	def deselectAllRegions(self, event):
+		for region in AVAIL_REGIONS:
+			cur_region = region.replace('-','_')
+			cur_region = cur_region+'_status'
+			region_status = getattr(self,cur_region)
+			region_status.setSelected(True)
 
 	#Layout the UI
 	def getUiComponent(self):
@@ -534,6 +550,14 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 		self.regions_title = JPanel()
 		self.main.add(self.regions_title)
 		self.regions_title.add(JLabel("Regions to launch API Gateways in (Any failed regions will be skipped):"))
+
+		self.buttons_panel2 = JPanel()
+		self.main.add(self.buttons_panel2)
+		self.buttons_panel2.setLayout(BoxLayout(self.buttons_panel2, BoxLayout.X_AXIS))
+		self.save_button = JButton('Select All', actionPerformed = self.deselectAllRegions)
+		self.buttons_panel2.add(self.save_button)
+		self.enable_button = JButton('Deselect All', actionPerformed = self.selectAllRegions)
+		self.buttons_panel2.add(self.enable_button)
 
 		self.regions_panel = JPanel()
 		self.main.add(self.regions_panel)
