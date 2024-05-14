@@ -7,6 +7,7 @@ from burp import IBurpExtender, IExtensionStateListener, ITab, IHttpListener
 from java.awt import GridLayout, Color
 import os
 import sys
+import random
 
 # Include ./lib in the sys path so we can import boto3 from it
 lib_path = os.path.abspath('./lib')
@@ -324,6 +325,9 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 		print('loaded endpoints: {}'.format(len(self.allEndpoints)))
 		self.status_indicator.text = 'loaded endpoints: {}'.format(len(self.allEndpoints))
 
+	# Generate a random IP to stick in the X-Forwarded-For header
+	def generateRandomIp(self):
+		return '.'.join(str(random.randint(0, 255)) for _ in range(4))
 
 	#Traffic redirecting
 	def processHttpMessage(self, toolFlag, messageIsRequest, messageInfo):
@@ -358,7 +362,7 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 			)
 
 			requestInfo = self.helpers.analyzeRequest(messageInfo)
-			new_headers = requestInfo.headers
+			new_headers = list(requestInfo.headers)
 
 			#Update the path to point to the API Gateway path
 			req_head = new_headers[0]
@@ -371,10 +375,17 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 				new_headers[0] = re.sub(' \/'," /"+self.stage_name.text+"/",req_head)
 
 			#Replace the Host header with the Gateway host
+			x_forwarded_header_in_request = False
 			for header in new_headers:
 				if header.startswith('Host: '):
 					host_header_index = new_headers.index(header)
 					new_headers[host_header_index] = 'Host: ' + messageInfo.getHttpService().getHost()
+				if header.startswith('X-Forwarded-For: '):
+					x_forwarded_header_in_request = True
+
+			random_ip = self.generateRandomIp()
+			if (not x_forwarded_header_in_request) and getattr(self,"xforwarded_status").isSelected():
+				new_headers.append('X-Forwarded-For: '+random_ip)
 
 			#Update the headers insert the existing body
 			body = messageInfo.request[requestInfo.getBodyOffset():len(messageInfo.request)]
@@ -501,6 +512,17 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 		buttongroup = ButtonGroup()
 		buttongroup.add(self.https_button)
 		buttongroup.add(self.http_button)
+
+		# Adding space between the panels
+		verticalStrut = Box.createVerticalStrut(10)  # Adjust 10 to increase/decrease spacing
+		self.main.add(verticalStrut)
+
+		self.xforwardedfor_panel = JPanel()
+		self.main.add(self.xforwardedfor_panel)
+		self.xforwardedfor_panel.setLayout(BoxLayout(self.xforwardedfor_panel, BoxLayout.Y_AXIS))
+		setattr(self, "xforwarded_status", JCheckBox("Add random X-Forwarded-For header on each request", True))
+		attr = getattr(self, "xforwarded_status")
+		self.xforwardedfor_panel.add(attr)
 
 		# Adding space between the panels
 		verticalStrut = Box.createVerticalStrut(10)  # Adjust 10 to increase/decrease spacing
