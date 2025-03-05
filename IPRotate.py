@@ -163,7 +163,7 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 			self.restAPIId = self.create_api_response['id']
 			self.enabled_regions[region] = self.restAPIId
 
-			self.awsclient.create_resource(
+			create_resource_response = self.awsclient.create_resource(
 				restApiId=self.create_api_response['id'],
 				parentId=get_resource_response['items'][0]['id'],
 				pathPart='{proxy+}'
@@ -188,6 +188,31 @@ class BurpExtender(IBurpExtender, IExtensionStateListener, ITab, IHttpListener):
 				integrationHttpMethod='ANY',
 				uri=self.getTargetProtocol()+'://'+self.target_host.text + '/',
 				connectionType='INTERNET',
+				requestParameters={
+					'integration.request.path.proxy':'method.request.path.proxy',
+                                        'integration.request.header.X-Forwarded-For': 'method.request.header.X-My-X-Forwarded-For'
+				}
+			)
+
+			self.awsclient.put_method(
+				restApiId=self.create_api_response['id'],
+				resourceId=create_resource_response['id'],
+				httpMethod='ANY',
+				authorizationType='NONE',
+				requestParameters={
+					'method.request.path.proxy':True,
+					'method.request.header.X-My-X-Forwarded-For':True
+				}
+			)
+
+			self.awsclient.put_integration(
+				restApiId=self.create_api_response['id'],
+				resourceId=create_resource_response['id'],
+				type= 'HTTP_PROXY', 
+				httpMethod= 'ANY',
+				integrationHttpMethod='ANY',
+				uri= self.getTargetProtocol()+'://'+self.target_host.text+'/{proxy}',
+				connectionType= 'INTERNET',
 				requestParameters={
 					'integration.request.path.proxy':'method.request.path.proxy',
                                         'integration.request.header.X-Forwarded-For': 'method.request.header.X-My-X-Forwarded-For'
