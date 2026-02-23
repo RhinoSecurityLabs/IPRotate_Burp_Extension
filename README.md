@@ -4,6 +4,10 @@ Extension for Burp Suite which uses AWS API Gateway to change your IP on every r
 
 More info: [Bypassing IP Based Blocking Using AWS - Rhino Security Labs](https://rhinosecuritylabs.com/aws/bypassing-ip-based-blocking-aws/)
 
+## Note/Warning
+
+This method of using AWS API Gateways to obfuscate source IP is now considered prohibited according to AWS' penetration testing policy: https://aws.amazon.com/security/penetration-testing/
+
 ## Description
 
 This extension allows you to easily spin up API Gateways across multiple regions. All the Burp Suite traffic for the targeted host is then routed through the API Gateway endpoints which causes the IP to be different on each request. (There is a chance for recycling of IPs but this is pretty low and the more regions you use the less of a chance).
